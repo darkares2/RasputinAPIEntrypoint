@@ -19,7 +19,15 @@ jobs:
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
-
+    - name: Install dependencies
+          run: dotnet restore
+    - name: Test with dotnet
+      run: dotnet test --logger trx --results-directory "TestResults"
+    - name: Upload dotnet test results
+      uses: actions/upload-artifact@v3
+      with:
+        name: dotnet-results
+        path: TestResults
     - name: 'Resolve Project Dependencies Using Dotnet'
       shell: bash
       run: |
