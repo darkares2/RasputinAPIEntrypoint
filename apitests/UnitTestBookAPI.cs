@@ -7,13 +7,14 @@ using System.Collections.Generic;
 using Microsoft.Extensions.Primitives;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.WebJobs;
 
 namespace apitests;
 
-public class UnitTest1
+public class UnitTestBookAPI
 {
     [Fact]
-    public async Task Test1Async()
+    public async Task UnitTestInvalidRequest()
     {
         var logMock = new Mock<ILogger>();
         var request = new DefaultHttpRequest(new DefaultHttpContext())
@@ -26,9 +27,10 @@ public class UnitTest1
                     }
                 )
             };
-        var response = await Rasputin.API.HttpTriggerBookAPI.Run(request, logMock.Object);
-        Assert.IsAssignableFrom<OkObjectResult>(response);
-        var result = (OkObjectResult)response;
-        Assert.Equal("Hello, Testing. This HTTP triggered function executed successfully.", result.Value);
+        var ICollectorMock = new Mock<ICollector<string>>();
+        var response = await Rasputin.API.HttpTriggerBookAPI.Run(request, ICollectorMock.Object, logMock.Object);
+        Assert.IsAssignableFrom<BadRequestObjectResult>(response);
+        var result = (BadRequestObjectResult)response;
+        Assert.Equal("Invalid request", result.Value);
     }
 }
