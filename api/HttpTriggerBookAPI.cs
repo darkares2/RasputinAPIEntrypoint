@@ -90,6 +90,7 @@ namespace Rasputin.API
                     new OperationContext() { ClientRequestID = Guid.NewGuid().ToString() },
                     cancellationToken);                
             }
+            await queue.DeleteIfExistsAsync();
             if (cancellationToken.IsCancellationRequested)
             {
                 throw new TimeoutException("Timeout waiting for reply");
