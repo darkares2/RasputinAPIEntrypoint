@@ -74,17 +74,17 @@ namespace Rasputin.API
 
             log.LogInformation("Waiting for reply");
             // Set up a cancellation token with a timeout of 10 seconds
-            CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(20));
             CancellationToken cancellationToken = cancellationTokenSource.Token;
 
             CloudQueueMessage queueItem = null;
             while(queueItem == null && !cancellationToken.IsCancellationRequested) {
                 queueItem = await queue.GetMessageAsync(
-                    TimeSpan.FromSeconds(10),
+                    null,
                     new QueueRequestOptions() 
                     { 
-                        MaximumExecutionTime = TimeSpan.FromSeconds(10), 
-                        ServerTimeout = TimeSpan.FromSeconds(10), 
+                        MaximumExecutionTime = TimeSpan.FromSeconds(20), 
+                        ServerTimeout = TimeSpan.FromSeconds(20), 
                         RetryPolicy = new Microsoft.WindowsAzure.Storage.RetryPolicies.ExponentialRetry() 
                     },
                     new OperationContext() { ClientRequestID = Guid.NewGuid().ToString() },
