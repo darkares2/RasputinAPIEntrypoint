@@ -20,7 +20,7 @@ jobs:
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
     - name: Install dependencies
-          run: dotnet restore
+      run: dotnet restore
     - name: Test with dotnet
       run: dotnet test --logger trx --results-directory "TestResults"
     - name: Upload dotnet test results
