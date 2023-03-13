@@ -109,10 +109,12 @@ namespace Rasputin.API
                 {
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                 });
+            string replyQueue = $"tmp-reply-{Guid.NewGuid().ToString()}";
+
             List<MessageHeader> headers = new List<MessageHeader>();
             headers.Add(new MessageHeader() { Name = "id-header", Fields = new Dictionary<string, string>() { { "GUID", Guid.NewGuid().ToString() } } });
             headers.Add(new MessageHeader() { Name = "route-header", Fields = new Dictionary<string, string>() { { "Destination", "ms-books" }, { "Active", "true" } } });
-            headers.Add(new MessageHeader() { Name = "route-header", Fields = new Dictionary<string, string>() { { "Destination", "tmp-reply" }, { "Active", "true" } } });
+            headers.Add(new MessageHeader() { Name = "route-header", Fields = new Dictionary<string, string>() { { "Destination", replyQueue }, { "Active", "true" } } });
             headers.Add(new MessageHeader() { Name = "current-queue-header", Fields = new Dictionary<string, string>() { { "Name", "api-router" } } });
             var cmd = new CmdUpdateBook() { Command = "create", Book = book };
             var message = new Message() { Headers = headers.ToArray(), Body = JsonSerializer.Serialize(cmd, new JsonSerializerOptions
@@ -123,7 +125,7 @@ namespace Rasputin.API
                 {
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                 }));
-            return new OkObjectResult("");
+            return new OkObjectResult(await WaitForReply(replyQueue, log));
         }
     }
 }
