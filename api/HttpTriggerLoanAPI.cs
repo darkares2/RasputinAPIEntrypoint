@@ -103,11 +103,13 @@ namespace Rasputin.API
 
         private static async Task<IActionResult> Post(HttpRequest req, ICollector<string> msg, ILogger log)
         {
+            log.LogInformation($"POST request received {req.Body}");
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             var loan = JsonSerializer.Deserialize<Loans>(requestBody, new JsonSerializerOptions
                 {
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                 });
+            loan.Active = true;
             if (loan.LoanTimestamp == DateTime.MinValue)
             {
                 loan.LoanTimestamp = DateTime.Now;
@@ -127,6 +129,7 @@ namespace Rasputin.API
                 {
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                 }));
+                log.LogInformation("Waiting for reply");
             return new OkObjectResult(await WaitForReply(replyQueue, log));
         }
     }
