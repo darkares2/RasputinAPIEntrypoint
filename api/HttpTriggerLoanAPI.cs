@@ -11,6 +11,7 @@ using System.Text.Json;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 using System.Threading;
+using System.Text.Json.Serialization;
 
 namespace Rasputin.API
 {
@@ -103,17 +104,18 @@ namespace Rasputin.API
 
         private static async Task<IActionResult> Post(HttpRequest req, ICollector<string> msg, ILogger log)
         {
-            log.LogInformation($"POST request received {req.Body}");
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             var loan = JsonSerializer.Deserialize<Loans>(requestBody, new JsonSerializerOptions
                 {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    NumberHandling = JsonNumberHandling.AllowReadingFromString
                 });
             loan.Active = true;
             if (loan.LoanTimestamp == DateTime.MinValue)
             {
                 loan.LoanTimestamp = DateTime.Now;
             }
+            log.LogInformation($"Loan: {loan.ISBN} {loan.UserId} {loan.LoanTimestamp} {loan.Active}");
             string replyQueue = $"tmp-reply-{Guid.NewGuid().ToString()}";
             List<MessageHeader> headers = new List<MessageHeader>();
             headers.Add(new MessageHeader() { Name = "id-header", Fields = new Dictionary<string, string>() { { "GUID", Guid.NewGuid().ToString() } } });
@@ -129,7 +131,6 @@ namespace Rasputin.API
                 {
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                 }));
-                log.LogInformation("Waiting for reply");
             return new OkObjectResult(await WaitForReply(replyQueue, log));
         }
     }
