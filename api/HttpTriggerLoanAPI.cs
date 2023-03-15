@@ -29,6 +29,10 @@ namespace Rasputin.API
             {
                 return await Post(req, msg, log);
             }
+            if (req.Method == "PUT")
+            {
+                return await Put(req, msg, log);
+            }
             else if (req.Method == "GET")
             {
                 return await Get(req, msg, log);
@@ -151,6 +155,34 @@ namespace Rasputin.API
             headers.Add(new MessageHeader() { Name = "route-header", Fields = new Dictionary<string, string>() { { "Destination", replyQueue }, { "Active", "true" } } });
             headers.Add(new MessageHeader() { Name = "current-queue-header", Fields = new Dictionary<string, string>() { { "Name", "api-router" } } });
             var cmd = new CmdLoan() { Command = "loan", Loan = loan };
+            var message = new Message() { Headers = headers.ToArray(), Body = JsonSerializer.Serialize(cmd, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                }) };
+            msg.Add(JsonSerializer.Serialize(message, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                }));
+            return new OkObjectResult(await WaitForReply(replyQueue, log));
+        }
+
+        private static async Task<IActionResult> Put(HttpRequest req, ICollector<string> msg, ILogger log)
+        {
+            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+            var loan = JsonSerializer.Deserialize<Loans>(requestBody, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    NumberHandling = JsonNumberHandling.AllowReadingFromString
+                });
+            loan.Active = false;
+            log.LogInformation($"Loan: {loan.ISBN} {loan.UserId} {loan.LoanTimestamp} {loan.Active}");
+            string replyQueue = $"tmp-reply-{Guid.NewGuid().ToString()}";
+            List<MessageHeader> headers = new List<MessageHeader>();
+            headers.Add(new MessageHeader() { Name = "id-header", Fields = new Dictionary<string, string>() { { "GUID", Guid.NewGuid().ToString() } } });
+            headers.Add(new MessageHeader() { Name = "route-header", Fields = new Dictionary<string, string>() { { "Destination", "ms-loans" }, { "Active", "true" } } });
+            headers.Add(new MessageHeader() { Name = "route-header", Fields = new Dictionary<string, string>() { { "Destination", replyQueue }, { "Active", "true" } } });
+            headers.Add(new MessageHeader() { Name = "current-queue-header", Fields = new Dictionary<string, string>() { { "Name", "api-router" } } });
+            var cmd = new CmdLoan() { Command = "return", Loan = loan };
             var message = new Message() { Headers = headers.ToArray(), Body = JsonSerializer.Serialize(cmd, new JsonSerializerOptions
                 {
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
