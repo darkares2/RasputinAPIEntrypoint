@@ -19,7 +19,7 @@ namespace Rasputin.API
     { 
         [FunctionName("HttpTriggerLoanAPI")]
         public static async Task<IActionResult> Run(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req,
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get", "put", "post", Route = null)] HttpRequest req,
             [Queue("api-router"),StorageAccount("rasputinstorageaccount_STORAGE")] ICollector<string> msg, 
             ILogger log)
         {
