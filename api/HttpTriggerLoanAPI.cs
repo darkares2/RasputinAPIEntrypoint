@@ -42,6 +42,11 @@ namespace Rasputin.API
 
         private static async Task<IActionResult> Get(HttpRequest req, ICollector<string> msg, ILogger log)
         {
+            string isbn = req.Query["isbn"];
+            if (isbn != null)
+            {
+                return await GetLoanHistoryByISBN(isbn, req, msg, log);
+            }
             string idList = req.Query["ids"];
 
             string replyQueue = $"tmp-reply-{Guid.NewGuid().ToString()}";
@@ -51,6 +56,29 @@ namespace Rasputin.API
             headers.Add(new MessageHeader() { Name = "route-header", Fields = new Dictionary<string, string>() { { "Destination", replyQueue }, { "Active", "true" } } });
             headers.Add(new MessageHeader() { Name = "current-queue-header", Fields = new Dictionary<string, string>() { { "Name", "api-router" } } });
             var cmd = new CmdLoan() { Command = "list_active_books_user", Parameter = idList };
+            var message = new Message() { Headers = headers.ToArray(), Body = JsonSerializer.Serialize(cmd, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                }) };
+            log.LogInformation("Sending message to queue");
+            msg.Add(JsonSerializer.Serialize(message, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                }));
+
+            return new OkObjectResult(await WaitForReply(replyQueue, log));
+        }
+
+        private static async Task<IActionResult> GetLoanHistoryByISBN(string isbn, HttpRequest req, ICollector<string> msg, ILogger log)
+        {
+            log.LogInformation($"Get loan history for ISBN {isbn}");
+            string replyQueue = $"tmp-reply-{Guid.NewGuid().ToString()}";
+            List<MessageHeader> headers = new List<MessageHeader>();
+            headers.Add(new MessageHeader() { Name = "id-header", Fields = new Dictionary<string, string>() { { "GUID", Guid.NewGuid().ToString() } } });
+            headers.Add(new MessageHeader() { Name = "route-header", Fields = new Dictionary<string, string>() { { "Destination", "ms-loans" }, { "Active", "true" } } });
+            headers.Add(new MessageHeader() { Name = "route-header", Fields = new Dictionary<string, string>() { { "Destination", replyQueue }, { "Active", "true" } } });
+            headers.Add(new MessageHeader() { Name = "current-queue-header", Fields = new Dictionary<string, string>() { { "Name", "api-router" } } });
+            var cmd = new CmdLoan() { Command = "list_loan_history_by_isbn", Parameter = isbn };
             var message = new Message() { Headers = headers.ToArray(), Body = JsonSerializer.Serialize(cmd, new JsonSerializerOptions
                 {
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
@@ -113,7 +141,7 @@ namespace Rasputin.API
             loan.Active = true;
             if (loan.LoanTimestamp == DateTime.MinValue)
             {
-                loan.LoanTimestamp = DateTime.Now;
+                loan.LoanTimestamp = DateTime.UtcNow;
             }
             log.LogInformation($"Loan: {loan.ISBN} {loan.UserId} {loan.LoanTimestamp} {loan.Active}");
             string replyQueue = $"tmp-reply-{Guid.NewGuid().ToString()}";
