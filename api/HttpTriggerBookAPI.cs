@@ -11,6 +11,9 @@ using System.Collections.Generic;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 using System.Threading;
+using Azure.Messaging.ServiceBus;
+using System.Text;
+using Azure.Messaging.ServiceBus.Administration;
 
 namespace Rasputin.API
 {
@@ -36,7 +39,6 @@ namespace Rasputin.API
             {
                 return new BadRequestObjectResult("Invalid request");
             }
-
         }
 
         private static async Task<IActionResult> Get(HttpRequest req, ICollector<string> msg, ILogger log)
@@ -56,50 +58,71 @@ namespace Rasputin.API
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                 }) };
             log.LogInformation("Sending message to queue");
-            msg.Add(JsonSerializer.Serialize(message, new JsonSerializerOptions
+            await MessageHelper.SendMessageAsync(Environment.GetEnvironmentVariable("rasputinServicebus"), "api-router", JsonSerializer.Serialize(message, new JsonSerializerOptions
                 {
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                 }));
-
-            return new OkObjectResult(await WaitForReply(replyQueue, log));
+            return new OkObjectResult(await WaitForReplyFromTemporarySbQueue(replyQueue, log));
         }
 
-        private static async Task<string> WaitForReply(string replyQueue, ILogger log)
-        {
-            var str = Environment.GetEnvironmentVariable("rasputinstorageaccount_STORAGE");
-            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(str);
-            CloudQueueClient queueClient = storageAccount.CreateCloudQueueClient();
-            CloudQueue queue = queueClient.GetQueueReference(replyQueue);
-            await queue.CreateIfNotExistsAsync();
 
-            log.LogInformation("Waiting for reply");
+        private static async Task<string> WaitForReplyFromTemporarySbQueue(string replyQueue, ILogger log)
+        {
+            
+            log.LogInformation($"Waiting for reply on queue {replyQueue}");
+            var str = Environment.GetEnvironmentVariable("rasputinServicebus");
+            {
+                await CreateTmpQueue(replyQueue, str);
+            }
+            await using var client = new ServiceBusClient(str);
+            var receiver = client.CreateReceiver(replyQueue);
+
             // Set up a cancellation token with a timeout of 10 seconds
             CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(20));
             CancellationToken cancellationToken = cancellationTokenSource.Token;
 
-            CloudQueueMessage queueItem = null;
-            while(queueItem == null && !cancellationToken.IsCancellationRequested) {
-                queueItem = await queue.GetMessageAsync(
-                    null,
-                    new QueueRequestOptions() 
-                    { 
-                        MaximumExecutionTime = TimeSpan.FromSeconds(20), 
-                        ServerTimeout = TimeSpan.FromSeconds(20), 
-                        RetryPolicy = new Microsoft.WindowsAzure.Storage.RetryPolicies.ExponentialRetry() 
-                    },
-                    new OperationContext() { ClientRequestID = Guid.NewGuid().ToString() },
-                    cancellationToken);                
+            log.LogInformation($"Receiving message from queue {replyQueue}");
+            try {
+                ServiceBusReceivedMessage message = await receiver.ReceiveMessageAsync(null, cancellationToken);
+                try
+                {
+                    // Process the message
+                    log.LogInformation($"Received message: {message.Body}");
+
+                    // Mark the message as completed so it is removed from the queue
+                    await receiver.CompleteMessageAsync(message);
+                }
+                catch (Exception ex)
+                {
+                    // Handle the exception and optionally abandon or defer the message
+                    log.LogInformation($"Error processing message: {ex.Message}");
+                    await receiver.AbandonMessageAsync(message);
+                }
+                var response = JsonSerializer.Deserialize<Message>(Encoding.UTF8.GetString(message.Body), new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                });
+                return response.Body;
+            } finally {
+                await receiver.CloseAsync();
+                await DeleteTmpQueue(replyQueue, str);
             }
-            await queue.DeleteIfExistsAsync();
-            if (cancellationToken.IsCancellationRequested)
+        }
+
+        private static Task DeleteTmpQueue(string replyQueue, string str)
+        {
+            var client = new ServiceBusAdministrationClient(str);
+            return client.DeleteQueueAsync(replyQueue);
+        }
+
+        private static async Task CreateTmpQueue(string replyQueue, string str)
+        {
+            var client = new ServiceBusAdministrationClient(str);
+
+            if (!await client.QueueExistsAsync(replyQueue))
             {
-                throw new TimeoutException("Timeout waiting for reply");
+                await client.CreateQueueAsync(new CreateQueueOptions(replyQueue) { /*RequiresSession = true, AutoDeleteOnIdle = TimeSpan.FromMinutes(5) not available in basic*/ });
             }
-            var message = JsonSerializer.Deserialize<Message>(queueItem.AsString, new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            });
-            return message.Body;
         }
 
         private static async Task<IActionResult> Post(HttpRequest req, ICollector<string> msg, ILogger log)
@@ -121,11 +144,11 @@ namespace Rasputin.API
                 {
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                 }) };
-            msg.Add(JsonSerializer.Serialize(message, new JsonSerializerOptions
+            await MessageHelper.SendMessageAsync(Environment.GetEnvironmentVariable("rasputinServicebus"), "api-router", JsonSerializer.Serialize(message, new JsonSerializerOptions
                 {
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                 }));
-            return new OkObjectResult(await WaitForReply(replyQueue, log));
+            return new OkObjectResult(await WaitForReplyFromTemporarySbQueue(replyQueue, log));
         }
     }
 }
