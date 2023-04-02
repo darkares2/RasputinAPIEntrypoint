@@ -45,29 +45,29 @@ namespace Rasputin.API
 
             string connectionString = Environment.GetEnvironmentVariable("rasputinServicebus");
             string replyQueue = await MessageHelper.SetupTemporaryReplyQueue(connectionString);
-            try {
-                List<MessageHeader> headers = new List<MessageHeader>();
-                headers.Add(new MessageHeader() { Name = "id-header", Fields = new Dictionary<string, string>() { { "GUID", Guid.NewGuid().ToString() } } });
-                headers.Add(new MessageHeader() { Name = "route-header", Fields = new Dictionary<string, string>() { { "Destination", "ms-books" }, { "Active", "true" } } });
-                headers.Add(new MessageHeader() { Name = "route-header", Fields = new Dictionary<string, string>() { { "Destination", replyQueue }, { "Active", "true" } } });
-                headers.Add(new MessageHeader() { Name = "current-queue-header", Fields = new Dictionary<string, string>() { { "Name", "api-router" } } });
+            try
+            {
+                List<MessageHeader> headers = MessageHelper.CreateHeaders("ms-books", replyQueue);
                 var cmd = new CmdUpdateBook() { Command = "list", Book = book };
-                var message = new Message() { Headers = headers.ToArray(), Body = JsonSerializer.Serialize(cmd, new JsonSerializerOptions
+                var message = new Message()
+                {
+                    Headers = headers.ToArray(),
+                    Body = JsonSerializer.Serialize(cmd, new JsonSerializerOptions
                     {
                         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                    }) };
+                    })
+                };
                 log.LogInformation("Sending message to queue");
                 await MessageHelper.SendMessageAsync(Environment.GetEnvironmentVariable("rasputinServicebus"), "api-router", JsonSerializer.Serialize(message, new JsonSerializerOptions
-                    {
-                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                    }));
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                }));
                 return new OkObjectResult(await MessageHelper.WaitForReplyFromTemporarySbQueue(connectionString, replyQueue, log));
-            } finally {
+            }
+            finally {
                await MessageHelper.DeleteTmpQueue(connectionString, replyQueue);
             }
         }
-
-
 
         private static async Task<IActionResult> Post(HttpRequest req, ILogger log)
         {
@@ -79,11 +79,7 @@ namespace Rasputin.API
             string connectionString = Environment.GetEnvironmentVariable("rasputinServicebus");
             string replyQueue = await MessageHelper.SetupTemporaryReplyQueue(connectionString);
             try {
-                List<MessageHeader> headers = new List<MessageHeader>();
-                headers.Add(new MessageHeader() { Name = "id-header", Fields = new Dictionary<string, string>() { { "GUID", Guid.NewGuid().ToString() } } });
-                headers.Add(new MessageHeader() { Name = "route-header", Fields = new Dictionary<string, string>() { { "Destination", "ms-books" }, { "Active", "true" } } });
-                headers.Add(new MessageHeader() { Name = "route-header", Fields = new Dictionary<string, string>() { { "Destination", replyQueue }, { "Active", "true" } } });
-                headers.Add(new MessageHeader() { Name = "current-queue-header", Fields = new Dictionary<string, string>() { { "Name", "api-router" } } });
+                List<MessageHeader> headers = MessageHelper.CreateHeaders("ms-books", replyQueue);
                 var cmd = new CmdUpdateBook() { Command = "create", Book = book };
                 var message = new Message() { Headers = headers.ToArray(), Body = JsonSerializer.Serialize(cmd, new JsonSerializerOptions
                     {

@@ -55,11 +55,7 @@ namespace Rasputin.API
             string connectionString = Environment.GetEnvironmentVariable("rasputinServicebus");
             string replyQueue = await MessageHelper.SetupTemporaryReplyQueue(connectionString);
             try {
-                List<MessageHeader> headers = new List<MessageHeader>();
-                headers.Add(new MessageHeader() { Name = "id-header", Fields = new Dictionary<string, string>() { { "GUID", Guid.NewGuid().ToString() } } });
-                headers.Add(new MessageHeader() { Name = "route-header", Fields = new Dictionary<string, string>() { { "Destination", "ms-loans" }, { "Active", "true" } } });
-                headers.Add(new MessageHeader() { Name = "route-header", Fields = new Dictionary<string, string>() { { "Destination", replyQueue }, { "Active", "true" } } });
-                headers.Add(new MessageHeader() { Name = "current-queue-header", Fields = new Dictionary<string, string>() { { "Name", "api-router" } } });
+                List<MessageHeader> headers = MessageHelper.CreateHeaders("ms-loans", replyQueue);
                 var cmd = new CmdLoan() { Command = "list_active_books_user", Parameter = idList };
                 var message = new Message() { Headers = headers.ToArray(), Body = JsonSerializer.Serialize(cmd, new JsonSerializerOptions
                     {
@@ -82,11 +78,7 @@ namespace Rasputin.API
             string connectionString = Environment.GetEnvironmentVariable("rasputinServicebus");
             string replyQueue = await MessageHelper.SetupTemporaryReplyQueue(connectionString);
             try {
-                List<MessageHeader> headers = new List<MessageHeader>();
-                headers.Add(new MessageHeader() { Name = "id-header", Fields = new Dictionary<string, string>() { { "GUID", Guid.NewGuid().ToString() } } });
-                headers.Add(new MessageHeader() { Name = "route-header", Fields = new Dictionary<string, string>() { { "Destination", "ms-loans" }, { "Active", "true" } } });
-                headers.Add(new MessageHeader() { Name = "route-header", Fields = new Dictionary<string, string>() { { "Destination", replyQueue }, { "Active", "true" } } });
-                headers.Add(new MessageHeader() { Name = "current-queue-header", Fields = new Dictionary<string, string>() { { "Name", "api-router" } } });
+                List<MessageHeader> headers = MessageHelper.CreateHeaders("ms-loans", replyQueue);
                 var cmd = new CmdLoan() { Command = "list_loan_history_by_isbn", Parameter = isbn };
                 var message = new Message() { Headers = headers.ToArray(), Body = JsonSerializer.Serialize(cmd, new JsonSerializerOptions
                     {
@@ -120,11 +112,7 @@ namespace Rasputin.API
             string connectionString = Environment.GetEnvironmentVariable("rasputinServicebus");
             string replyQueue = await MessageHelper.SetupTemporaryReplyQueue(connectionString);
             try {
-                List<MessageHeader> headers = new List<MessageHeader>();
-                headers.Add(new MessageHeader() { Name = "id-header", Fields = new Dictionary<string, string>() { { "GUID", Guid.NewGuid().ToString() } } });
-                headers.Add(new MessageHeader() { Name = "route-header", Fields = new Dictionary<string, string>() { { "Destination", "ms-loans" }, { "Active", "true" } } });
-                headers.Add(new MessageHeader() { Name = "route-header", Fields = new Dictionary<string, string>() { { "Destination", replyQueue }, { "Active", "true" } } });
-                headers.Add(new MessageHeader() { Name = "current-queue-header", Fields = new Dictionary<string, string>() { { "Name", "api-router" } } });
+                List<MessageHeader> headers = MessageHelper.CreateHeaders("ms-loans", replyQueue);
                 var cmd = new CmdLoan() { Command = "loan", Loan = loan };
                 var message = new Message() { Headers = headers.ToArray(), Body = JsonSerializer.Serialize(cmd, new JsonSerializerOptions
                     {
@@ -153,11 +141,7 @@ namespace Rasputin.API
             string connectionString = Environment.GetEnvironmentVariable("rasputinServicebus");
             string replyQueue = await MessageHelper.SetupTemporaryReplyQueue(connectionString);
             try {
-                List<MessageHeader> headers = new List<MessageHeader>();
-                headers.Add(new MessageHeader() { Name = "id-header", Fields = new Dictionary<string, string>() { { "GUID", Guid.NewGuid().ToString() } } });
-                headers.Add(new MessageHeader() { Name = "route-header", Fields = new Dictionary<string, string>() { { "Destination", "ms-loans" }, { "Active", "true" } } });
-                headers.Add(new MessageHeader() { Name = "route-header", Fields = new Dictionary<string, string>() { { "Destination", replyQueue }, { "Active", "true" } } });
-                headers.Add(new MessageHeader() { Name = "current-queue-header", Fields = new Dictionary<string, string>() { { "Name", "api-router" } } });
+                List<MessageHeader> headers = MessageHelper.CreateHeaders("ms-loans", replyQueue);
                 var cmd = new CmdLoan() { Command = "return", Loan = loan };
                 var message = new Message() { Headers = headers.ToArray(), Body = JsonSerializer.Serialize(cmd, new JsonSerializerOptions
                     {

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -28,6 +29,16 @@ public class MessageHelper{
         await CreateTmpQueue(replyQueue, connectionString);
 
         return replyQueue;
+    }
+
+    public static List<MessageHeader> CreateHeaders(string destinationQueue, string replyQueue)
+    {
+        List<MessageHeader> headers = new List<MessageHeader>();
+        headers.Add(new MessageHeader() { Name = "id-header", Fields = new Dictionary<string, string>() { { "GUID", Guid.NewGuid().ToString() } } });
+        headers.Add(new MessageHeader() { Name = "route-header", Fields = new Dictionary<string, string>() { { "Destination", destinationQueue }, { "Active", "true" } } });
+        headers.Add(new MessageHeader() { Name = "route-header", Fields = new Dictionary<string, string>() { { "Destination", replyQueue }, { "Active", "true" } } });
+        headers.Add(new MessageHeader() { Name = "current-queue-header", Fields = new Dictionary<string, string>() { { "Name", "api-router" }, { "Timestamp", DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ") } } });
+        return headers;
     }
 
     public static async Task<string> WaitForReplyFromTemporarySbQueue(string connectionString, string replyQueue, ILogger log)

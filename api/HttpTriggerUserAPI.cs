@@ -46,11 +46,7 @@ namespace Rasputin.API
             string connectionString = Environment.GetEnvironmentVariable("rasputinServicebus");
             string replyQueue = await MessageHelper.SetupTemporaryReplyQueue(connectionString);
             try {
-                List<MessageHeader> headers = new List<MessageHeader>();
-                headers.Add(new MessageHeader() { Name = "id-header", Fields = new Dictionary<string, string>() { { "GUID", Guid.NewGuid().ToString() } } });
-                headers.Add(new MessageHeader() { Name = "route-header", Fields = new Dictionary<string, string>() { { "Destination", "ms-users" }, { "Active", "true" } } });
-                headers.Add(new MessageHeader() { Name = "route-header", Fields = new Dictionary<string, string>() { { "Destination", replyQueue }, { "Active", "true" } } });
-                headers.Add(new MessageHeader() { Name = "current-queue-header", Fields = new Dictionary<string, string>() { { "Name", "api-router" } } });
+                List<MessageHeader> headers = MessageHelper.CreateHeaders("ms-users", replyQueue);
                 var cmd = new CmdUser() { Command = "list", Parameter = idList };
                 var message = new Message() { Headers = headers.ToArray(), Body = JsonSerializer.Serialize(cmd, new JsonSerializerOptions
                     {
@@ -77,11 +73,7 @@ namespace Rasputin.API
             string connectionString = Environment.GetEnvironmentVariable("rasputinServicebus");
             string replyQueue = await MessageHelper.SetupTemporaryReplyQueue(connectionString);
             try {
-                List<MessageHeader> headers = new List<MessageHeader>();
-                headers.Add(new MessageHeader() { Name = "id-header", Fields = new Dictionary<string, string>() { { "GUID", Guid.NewGuid().ToString() } } });
-                headers.Add(new MessageHeader() { Name = "route-header", Fields = new Dictionary<string, string>() { { "Destination", "ms-users" }, { "Active", "true" } } });
-                headers.Add(new MessageHeader() { Name = "route-header", Fields = new Dictionary<string, string>() { { "Destination", replyQueue }, { "Active", "true" } } });
-                headers.Add(new MessageHeader() { Name = "current-queue-header", Fields = new Dictionary<string, string>() { { "Name", "api-router" } } });
+                List<MessageHeader> headers = MessageHelper.CreateHeaders("ms-users", replyQueue);
                 var cmd = new CmdUser() { Command = "create", User = user };
                 var message = new Message() { Headers = headers.ToArray(), Body = JsonSerializer.Serialize(cmd, new JsonSerializerOptions
                     {
