@@ -27,8 +27,7 @@ public class UnitTestBookAPI
                     }
                 )
             };
-        var ICollectorMock = new Mock<ICollector<string>>();
-        var response = await Rasputin.API.HttpTriggerBookAPI.Run(request, ICollectorMock.Object, logMock.Object);
+        var response = await Rasputin.API.HttpTriggerBookAPI.Run(request, logMock.Object);
         Assert.IsAssignableFrom<BadRequestObjectResult>(response);
         var result = (BadRequestObjectResult)response;
         Assert.Equal("Invalid request", result.Value);
