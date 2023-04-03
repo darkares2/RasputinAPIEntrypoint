@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -72,6 +74,7 @@ public class MessageHelper{
             {
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase
             });
+            await SendLog(response);
             return response.Body;
         } finally {
             await receiver.CloseAsync();
@@ -93,5 +96,31 @@ public class MessageHelper{
             await client.CreateQueueAsync(new CreateQueueOptions(replyQueue) { /*RequiresSession = true, AutoDeleteOnIdle = TimeSpan.FromMinutes(5) not available in basic*/ });
         }
     }
+
+    public static async Task SendLog(Message message)
+        {
+            var idHeader = message.Headers.FirstOrDefault(x => x.Name.Equals("id-header"));
+            var current = message.Headers.FirstOrDefault(x => x.Name.Equals("current-queue-header"));
+            LogTimer logTimer = new LogTimer() {
+                Id = Guid.Parse(idHeader.Fields["GUID"]),
+                Queue = current.Fields["Name"],
+                SentTimestamp = DateTime.ParseExact(current.Fields["Timestamp"], "yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture),
+                ReceiveTimestamp = DateTime.UtcNow
+            };
+            await using var client = new ServiceBusClient(Environment.GetEnvironmentVariable("rasputinServicebus"));
+            ServiceBusSender sender = client.CreateSender("ms-logtimer");
+            string queueMessage = JsonSerializer.Serialize(logTimer, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                });            
+            var messageBytes = Encoding.UTF8.GetBytes(queueMessage);
+            ServiceBusMessage messageObject = new ServiceBusMessage(messageBytes);
+
+            CancellationTokenSource cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            CancellationToken cancellationToken = cancellationTokenSource.Token;
+
+            await sender.SendMessageAsync(messageObject, cancellationToken);
+            await sender.CloseAsync();
+        }    
 
 }  
