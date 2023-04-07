@@ -104,7 +104,7 @@ public class MessageHelper{
             LogTimer logTimer = new LogTimer() {
                 Id = Guid.Parse(idHeader.Fields["GUID"]),
                 Queue = current.Fields["Name"],
-                SentTimestamp = DateTime.ParseExact(current.Fields["Timestamp"], "yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture),
+                SentTimestamp = DateTime.ParseExact(current.Fields["Timestamp"], "yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal),
                 ReceiveTimestamp = DateTime.UtcNow
             };
             await using var client = new ServiceBusClient(Environment.GetEnvironmentVariable("rasputinServicebus"));
